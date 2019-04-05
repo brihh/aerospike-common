@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2018 Aerospike, Inc.
+ * Copyright 2008-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -26,9 +26,9 @@
  ******************************************************************************/
 
 /**
- *	We have to guard against wrap-around, so call this occasionally. We really
- *	expect this will never get called, however it can be a symptom of a queue
- *	getting really, really deep.
+ * We have to guard against wrap-around, so call this occasionally. We really
+ * expect this will never get called, however it can be a symptom of a queue
+ * getting really, really deep.
  */
 static inline void
 as_queue_unwrap(as_queue* queue)
@@ -166,9 +166,7 @@ as_queue_push(as_queue* queue, const void* ptr)
 bool
 as_queue_push_limit(as_queue* queue, const void* ptr)
 {
-	uint32_t size = as_queue_size(queue);
-
-	if (size >= queue->capacity) {
+	if (as_queue_size(queue) >= queue->capacity) {
 		return false;
 	}
 
@@ -185,6 +183,24 @@ as_queue_push_head(as_queue *queue, const void* ptr)
 		if (! as_queue_increase_capacity(queue)) {
 			return false;
 		}
+	}
+
+	if (queue->head == 0) {
+		queue->head += queue->capacity;
+		queue->tail += queue->capacity;
+	}
+
+	queue->head--;
+	memcpy(as_queue_get(queue, queue->head), ptr, queue->item_size);
+	as_queue_unwrap(queue);
+	return true;
+}
+
+bool
+as_queue_push_head_limit(as_queue *queue, const void* ptr)
+{
+	if (as_queue_size(queue) >= queue->capacity) {
+		return false;
 	}
 
 	if (queue->head == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2018 Aerospike, Inc.
+ * Copyright 2008-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -166,6 +166,22 @@ as_queue_mt_push_head(as_queue_mt* queue, const void* ptr)
 }
 
 /**
+ * Push to the front of the queue only if size < capacity.
+ */
+static inline bool
+as_queue_mt_push_head_limit(as_queue_mt* queue, const void* ptr)
+{
+	pthread_mutex_lock(&queue->lock);
+	bool status = as_queue_push_head_limit(&queue->queue, ptr);
+
+	if (status) {
+		pthread_cond_signal(&queue->cond);
+	}
+	pthread_mutex_unlock(&queue->lock);
+	return status;
+}
+
+/**
  * Pop from the head of the queue.
  *
  * If the queue is empty, wait_ms is the maximum time in milliseconds to wait 
@@ -176,6 +192,18 @@ as_queue_mt_push_head(as_queue_mt* queue, const void* ptr)
  */
 AS_EXTERN bool
 as_queue_mt_pop(as_queue_mt* queue, void* ptr, int wait_ms);
+
+/**
+ * Pop from the tail of the queue.
+ *
+ * If the queue is empty, wait_ms is the maximum time in milliseconds to wait
+ * for an available entry.  If wait_ms is AS_QUEUE_FOREVER (-1), the wait time will be forever.
+ * If wait_ms is AS_QUEUE_NOWAIT (0), the function will not wait.
+ *
+ * The return value is true if an entry was successfully retrieved.
+ */
+AS_EXTERN bool
+as_queue_mt_pop_tail(as_queue_mt* queue, void* ptr, int wait_ms);
 
 #ifdef __cplusplus
 } // end extern "C"
